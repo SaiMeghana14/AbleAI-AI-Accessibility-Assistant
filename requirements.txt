@@ -1,0 +1,10 @@
+streamlit
+openai
+speechrecognition
+gtts
+pyttsx3
+pillow
+transformers
+torch
+opencv-python
+streamlit-lottie
