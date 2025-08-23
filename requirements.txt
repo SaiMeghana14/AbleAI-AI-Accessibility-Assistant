@@ -1,10 +1,7 @@
-streamlit
-openai
-speechrecognition
-gtts
-pyttsx3
-pillow
-transformers
-torch
-opencv-python
-streamlit-lottie
+streamlit==1.37.0
+streamlit-mic-recorder==0.0.4
+SpeechRecognition==3.10.4
+gTTS==2.5.4
+Pillow==10.4.0
+numpy==1.26.4
+requests==2.32.3
