@@ -332,7 +332,7 @@ with tab1:
     
     data = pd.DataFrame({
         "Feature": ["Text→Speech", "Speech→Text", "OCR Reads", "Summaries"],
-        "Count": [tts_count, stt_count, ocr_count, summary_count]
+        "Count": [u["tts"], u["stt"], u["ocr"], u["summaries"]]
     })
     fig = px.pie(data, names='Feature', values='Count', title="Feature Usage Distribution")
     st.plotly_chart(fig, use_container_width=True)
