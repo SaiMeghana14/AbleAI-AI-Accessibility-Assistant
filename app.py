@@ -599,7 +599,8 @@ with tab7:
             </div>
           </div>
         </div>
-
+        <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/fileset_resolver.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.js"></script>
         <script>
         // --- Elements ---
