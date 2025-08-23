@@ -125,8 +125,8 @@ with st.sidebar:
     st.caption("Tip: Leave blank if you don't have tokens/keys.")
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    "🎤 Speech → Text", "🗣️ Text → Speech", "🖼️ Image → Alt-Text",
-    "📷 OCR Reader", "📝 Summarizer", "🤟 Sign (Demo)", "📊 Dashboard"
+    "📊 Dashboard","🎤 Speech → Text", "🗣️ Text → Speech", "🖼️ Image → Alt-Text",
+    "📷 OCR Reader", "📝 Summarizer", "🤟 Sign (Demo)"
 ])
 
 # --------------- HELPERS ---------------
@@ -315,8 +315,40 @@ def detect_emotion_from_wav(wav_bytes):
     except Exception as e:
         return "unknown", {"error": str(e)}
 
-# --------------- TAB 1: SPEECH → TEXT ---------------
+# --------------- TAB 1: DASHBOARD ---------------
 with tab1:
+    st.subheader("📊 Accessibility Dashboard")
+    u = st.session_state["usage"]
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("🔊 Text → Speech", u["tts"])
+    c2.metric("🎤 Speech → Text", u["stt"])
+    c3.metric("📷 OCR Reads", u["ocr"])
+    c4.metric("📝 Summaries", u["summaries"])
+    st.caption(f"⏱️ Time listened (est.): **{int(u['listen_seconds']//60)} min {int(u['listen_seconds']%60)} s**")
+
+    # Charts (matplotlib-free Streamlit built-ins to keep deps minimal)
+    import pandas as pd
+    usage_df = pd.DataFrame({
+        "Feature": ["TTS","STT","OCR","Summaries"],
+        "Count": [u["tts"], u["stt"], u["ocr"], u["summaries"]]
+    })
+    st.bar_chart(usage_df.set_index("Feature"))
+
+    # Timeline (last 50 events)
+    if st.session_state["log"]:
+        tl = pd.DataFrame(st.session_state["log"][-50:])
+        tl["ts"] = tl["ts"].apply(lambda x: dt.datetime.fromtimestamp(x).strftime("%H:%M:%S"))
+        st.line_chart(tl.groupby("ts").size())
+
+    st.markdown("### 🏆 Badges")
+    if st.session_state["badges"]:
+        for b in sorted(st.session_state["badges"]):
+            st.markdown(f"<span class='badge'>{b}</span>", unsafe_allow_html=True)
+    else:
+        st.info("Use the features to unlock badges!")
+        
+# --------------- TAB 2: SPEECH → TEXT ---------------
+with tab2:
     st.subheader("🎤 Speech-to-Text")
     st.caption("Upload **WAV/AIFF/FLAC** for best results. MP3 isn’t supported by the STT backend here.")
     uploaded_audio = st.file_uploader("Upload audio (WAV/AIFF/FLAC)", type=["wav", "aiff", "flac"])
@@ -357,8 +389,8 @@ with tab1:
                             st.audio(audio_bytes, format="audio/mp3")
                             st.download_button("⬇️ Download MP3", data=audio_bytes, file_name="transcript_tts.mp3", mime="audio/mp3")
 
-# --------------- TAB 2: TEXT → SPEECH ---------------
-with tab2:
+# --------------- TAB 3: TEXT → SPEECH ---------------
+with tab3:
     st.subheader("🗣️ Text to Speech")
     tts_text = st.text_area("Enter text", placeholder="Type or paste text to convert into natural speech...")
     col1, col2 = st.columns([1,1])
@@ -383,8 +415,8 @@ with tab2:
         else:
             st.info("⚠️ Generate some audio to enable download.")
 
-# --------------- TAB 3: IMAGE → ALT-TEXT ---------------
-with tab3:
+# --------------- TAB 4: IMAGE → ALT-TEXT ---------------
+with tab4:
     st.subheader("🖼️ Image to Alt-Text / Caption")
     up = st.file_uploader("Upload an image (PNG/JPG)", type=["png","jpg","jpeg"], accept_multiple_files=False)
     if up:
@@ -408,8 +440,8 @@ with tab3:
         with colR:
             st.caption("Tip: Provide a Hugging Face token in the sidebar to use BLIP for high-quality captions.")
 
-# --------------- TAB 4: OCR READER ---------------
-with tab4:
+# --------------- TAB 5: OCR READER ---------------
+with tab5:
     st.subheader("📷 OCR Reader (Image → Text → Speech)")
     img_up = st.file_uploader("Upload an image with text (PNG/JPG)", type=["png","jpg","jpeg"])
     if img_up:
@@ -447,8 +479,8 @@ with tab4:
             else:
                 st.info("Run OCR first to get text.")
 
-# --------------- TAB 5: SUMMARIZER ---------------
-with tab5:
+# --------------- TAB 6: SUMMARIZER ---------------
+with tab6:
     st.subheader("📝 Smart Summarizer")
     st.caption("Paste long text to summarize. Uses HF (if token) or a lightweight local summarizer.")
     long_text = st.text_area("Input text", height=220, placeholder="Paste or type long text here...")
@@ -475,128 +507,394 @@ with tab5:
                         st.audio(audio_bytes, format="audio/mp3")
                         st.download_button("⬇️ Download MP3", data=audio_bytes, file_name="summary_tts.mp3", mime="audio/mp3")
 
-# --------------- TAB 6: SIGN DEMO ---------------
-with tab6:
-    st.subheader("🤟 Sign Recognition (Lightweight Demo)")
-    st.write("This demo runs **in the browser** using MediaPipe Hands (JavaScript). It highlights hand landmarks and shows basic gesture cues (open palm / fist / thumbs-up).")
+# --------------- TAB 7: SIGN DEMO ---------------
+with tab7:
+    st.subheader("🤟 Sign Recognition – Sequence Demo (Browser-only)")
+    st.write(
+        "Runs fully **in-browser** with MediaPipe Hands. It detects frame-level gestures, "
+        "groups stable frames into tokens, maps tokens to words/phrases, and builds a transcript."
+    )
     import streamlit.components.v1 as components
+
     components.html(
         """
         <html>
         <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <style>
-         body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI; margin:0}
-         #wrap{display:flex; flex-direction:column; gap:8px; padding:8px}
-         video, canvas{width:100%; max-width:720px; border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,.08)}
-         .badge{display:inline-block; padding:6px 10px; border-radius:999px; background:#eef2ff}
-        </style>
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <style>
+            :root{
+              --card: #ffffff;
+              --ink: #0f172a;
+              --muted:#64748b;
+              --pill:#eef2ff;
+              --shadow: 0 10px 30px rgba(0,0,0,.08);
+              --brand:#7c3aed;
+            }
+            body{font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI; margin:0; background:#fafafa; color:var(--ink)}
+            #wrap{display:flex; flex-direction:column; gap:12px; padding:12px; align-items:center}
+            .row{display:flex; gap:12px; flex-wrap:wrap; width:100%; max-width:980px}
+            .card{background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:12px; flex:1}
+            .badge{display:inline-block; padding:6px 10px; border-radius:999px; background:var(--pill); color:#1e293b; font-weight:600}
+            .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+            .btn{cursor:pointer; border:none; border-radius:999px; padding:10px 14px; font-weight:700; background:linear-gradient(90deg,#7c3aed,#06b6d4); color:#fff; box-shadow:var(--shadow)}
+            .btn:disabled{opacity:.5; cursor:not-allowed}
+            .ghost{background:#e2e8f0; color:#0f172a}
+            video, canvas{width:100%; max-width:640px; border-radius:16px; box-shadow:var(--shadow); background:#000}
+            .kv{display:grid; grid-template-columns: 140px 1fr; gap:6px; font-size:13px; color:var(--muted)}
+            textarea{width:100%; min-height:120px; border-radius:12px; border:1px solid #e5e7eb; padding:10px; font-size:14px}
+            .pill{display:inline-block; padding:6px 10px; border-radius:999px; background:#f1f5f9; margin-right:6px; margin-bottom:6px}
+          </style>
         </head>
         <body>
         <div id="wrap">
-          <span class="badge">Live demo • On-device</span>
-          <video id="video" autoplay playsinline></video>
-          <canvas id="out"></canvas>
-          <div id="label" class="badge">Initializing…</div>
+          <div class="row">
+            <div class="card" style="flex-basis:680px; text-align:center">
+              <span class="badge">🎥 Live • On-device</span>
+              <video id="video" autoplay playsinline muted></video>
+              <canvas id="out"></canvas>
+              <div style="margin-top:8px; display:flex; gap:8px; justify-content:center">
+                <button id="startBtn" class="btn">Start Camera</button>
+                <button id="stopBtn" class="btn ghost">Stop</button>
+                <span id="label" class="badge">Initializing…</span>
+              </div>
+            </div>
+            <div class="card" style="flex-basis:260px">
+              <div style="display:flex; justify-content:space-between; align-items:center">
+                <h4 style="margin:6px 0">Live Tokens</h4>
+                <span class="badge mono" id="fps">0 fps</span>
+              </div>
+              <div id="tokens" class="mono" style="min-height:32px; font-size:14px">—</div>
+              <h4 style="margin:10px 0 6px 0">Controls</h4>
+              <div class="kv">
+                <div>Stability (frames)</div><input id="stableN" type="number" min="1" value="6"/>
+                <div>Gap to split (ms)</div><input id="gapMs" type="number" min="200" value="700"/>
+                <div>Smooth landmarks</div><input id="smooth" type="checkbox" checked/>
+              </div>
+              <h4 style="margin:10px 0 6px 0">Detected Gesture</h4>
+              <div id="det" class="badge">—</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="card">
+              <h4 style="margin:6px 0">Transcript</h4>
+              <textarea id="transcript" placeholder="Recognized words will appear here…"></textarea>
+              <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap">
+                <button class="btn" id="speakBtn">🔊 Speak</button>
+                <button class="btn ghost" id="copyBtn">📋 Copy</button>
+                <button class="btn ghost" id="downloadBtn">⬇️ Download</button>
+                <button class="btn ghost" id="clearBtn">🧹 Clear</button>
+              </div>
+              <p style="color:#64748b; font-size:13px; margin-top:8px">
+                Tip: The demo maps simple hand tokens to phrases (HELLO, YES, NO, STOP, THANK YOU, OK, POINT).
+                Hold a gesture steady to confirm it; relax your hand to add a space.
+              </p>
+              <div>
+                <span class="pill">👋 Palm → HELLO</span>
+                <span class="pill">👍 Thumbs-up → YES</span>
+                <span class="pill">✊ Fist → STOP/NO (disambiguated by motion)</span>
+                <span class="pill">👉 Point → POINT (attention)</span>
+                <span class="pill">👌 OK → OK</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.js"></script>
         <script>
+        // --- Elements ---
         const video = document.getElementById('video');
         const canvas = document.getElementById('out');
         const ctx = canvas.getContext('2d');
         const label = document.getElementById('label');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn  = document.getElementById('stopBtn');
+        const tokensDiv = document.getElementById('tokens');
+        const transcriptEl = document.getElementById('transcript');
+        const speakBtn = document.getElementById('speakBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const fpsBadge = document.getElementById('fps');
+        const stableNInput = document.getElementById('stableN');
+        const gapMsInput = document.getElementById('gapMs');
+        const smoothInput = document.getElementById('smooth');
+        const detBadge = document.getElementById('det');
 
-        async function main(){
+        let stream = null;
+        let running = false;
+        let handLandmarker = null;
+
+        // Buffers & timing
+        let recentLabels = [];
+        let lastTokenTime = 0;
+        let tokens = [];
+        let lastFrameTs = performance.now();
+        let fpsSmoothed = 0;
+
+        // Simple moving-average smoother for landmarks
+        let prevLandmarks = null;
+
+        // --- Gesture helpers ---
+        function countExtended(pts){
+          // Use y relative to wrist to check "up" fingers
+          const tipIdx = [4,8,12,16,20];
+          const wrist = pts[0];
+          let count = 0;
+          for (const i of tipIdx){
+            if (pts[i].y < wrist.y - 0.05) count++;
+          }
+          return count;
+        }
+        function isThumbsUp(pts){
+          // Thumb tip left/right of IP joint + above wrist
+          const tip = pts[4], ip = pts[3], wrist = pts[0];
+          return (tip.x < ip.x - 0.02) && (tip.y < wrist.y - 0.02);
+        }
+        function isOK(pts){
+          // Thumb tip near index tip
+          const d = Math.hypot(pts[4].x-pts[8].x, pts[4].y-pts[8].y);
+          return d < 0.05;
+        }
+        function isPoint(pts){
+          // Only index extended
+          const tipIdx = [4,8,12,16,20];
+          const wristY = pts[0].y;
+          let ext = 0; let idxUp=false; let others=false;
+          for (const i of tipIdx){
+            const up = pts[i].y < wristY - 0.05;
+            if (up) ext++;
+            if (i===8 && up) idxUp=true;
+            if (i!==8 && up) others=true;
+          }
+          return (ext===1 && idxUp && !others);
+        }
+
+        function classifyGesture(pts){
+          // Optionally smooth landmarks
+          if (smoothInput.checked && prevLandmarks){
+            const sm = [];
+            for (let i=0;i<pts.length;i++){
+              sm.push({
+                x: (pts[i].x*0.7 + prevLandmarks[i].x*0.3),
+                y: (pts[i].y*0.7 + prevLandmarks[i].y*0.3)
+              });
+            }
+            pts = sm;
+          }
+          prevLandmarks = pts.map(p => ({x:p.x, y:p.y}));
+
+          const ext = countExtended(pts);
+          if (isOK(pts)) return "OK";
+          if (isPoint(pts)) return "POINT";
+          if (isThumbsUp(pts)) return "THUMBS_UP";
+          if (ext >= 4) return "PALM";
+          if (ext === 0) return "FIST";
+          return "NEUTRAL";
+        }
+
+        function tokenToWord(tok, contextMove=null){
+          // Map token → word/phrase; simple disambiguation for FIST by motion direction
+          switch(tok){
+            case "PALM": return "HELLO";
+            case "THUMBS_UP": return "YES";
+            case "FIST": return (contextMove==="shake") ? "NO" : "STOP";
+            case "OK": return "OK";
+            case "POINT": return "POINT";
+            default: return null;
+          }
+        }
+
+        // Basic motion heuristic (shake left-right → "NO")
+        let lastX = null, shakeScore = 0;
+        function motionUpdate(pts){
+          const cx = pts.reduce((a,p)=>a+p.x,0)/pts.length;
+          if (lastX!==null){
+            const dx = cx - lastX;
+            // increase shake score on sign flips
+            if (Math.abs(dx) > 0.01) {
+              shakeScore = (Math.sign(dx) !== Math.sign(shakeScore) ? -shakeScore : shakeScore) + dx;
+              // decay
+              shakeScore *= 0.9;
+            } else {
+              shakeScore *= 0.95;
+            }
+          }
+          lastX = cx;
+          if (Math.abs(shakeScore) > 0.06) return "shake";
+          return "steady";
+        }
+
+        function pushToken(label){
+          const now = performance.now();
+          const gapMs = parseInt(gapMsInput.value || "700", 10);
+          const stableN = parseInt(stableNInput.value || "6", 10);
+
+          // per-frame label buffer
+          recentLabels.push({t:now, l:label});
+          if (recentLabels.length > 32) recentLabels.shift();
+
+          // stable classification: last N frames same non-neutral label
+          const lastN = recentLabels.slice(-stableN);
+          if (lastN.length < stableN) return;
+          const allSame = lastN.every(x => x.l === lastN[0].l);
+          const lab = lastN[0].l;
+
+          if (allSame && lab && lab!=="NEUTRAL"){
+            const since = now - lastTokenTime;
+            // Avoid flooding: only if sufficient gap or new different label
+            const prev = tokens.length ? tokens[tokens.length-1].label : null;
+            if (since>gapMs || lab!==prev){
+              tokens.push({label: lab, t: now});
+              renderTokens();
+              lastTokenTime = now;
+
+              // map into word and append to transcript
+              const movement = motionUpdate(prevLandmarks || []);
+              const word = tokenToWord(lab, movement);
+              if (word){
+                const cur = transcriptEl.value.trim();
+                transcriptEl.value = (cur ? (cur + " " + word) : word);
+              }
+            }
+          }
+          // split words on long neutral/gap: if last frames are neutral and long idle → append space
+          const nonNeutralBack = [...recentLabels].reverse().find(x=>x.l!=="NEUTRAL");
+          if (!nonNeutralBack && (now - lastTokenTime) > (gapMs*1.5)){
+            // visual space (optional)
+            if (tokens.length && tokens[tokens.length-1].label!=="SPACE"){
+              tokens.push({label:"SPACE", t:now});
+              lastTokenTime = now;
+              renderTokens();
+              // add actual space in transcript only if last char isn't already space
+              if (!transcriptEl.value.endsWith(" ")) transcriptEl.value += " ";
+            }
+          }
+        }
+
+        function renderTokens(){
+            if (!tokens.length){ tokensDiv.textContent = "—"; return; }
+            tokensDiv.innerHTML = tokens.slice(-12).map(x=>`<span class="pill mono">${x.label}</span>`).join("");
+        }
+
+        // --- Web Speech Synthesis helpers ---
+        function speak(text){
+          if (!("speechSynthesis" in window)) {
+            alert("Speech Synthesis not supported in this browser.");
+            return;
+          }
+          const u = new SpeechSynthesisUtterance(text);
+          u.rate = 1.0; u.pitch = 1.0;
+          speechSynthesis.cancel();
+          speechSynthesis.speak(u);
+        }
+
+        copyBtn.onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(transcriptEl.value);
+            copyBtn.textContent = "✅ Copied";
+            setTimeout(()=>copyBtn.textContent="📋 Copy", 1200);
+          } catch(e){ alert("Copy failed: "+e); }
+        };
+        downloadBtn.onclick = () => {
+          const blob = new Blob([transcriptEl.value], {type:"text/plain"});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = "ableai_sign_transcript.txt";
+          a.click();
+          URL.revokeObjectURL(url);
+        };
+        clearBtn.onclick = () => { transcriptEl.value = ""; tokens = []; renderTokens(); };
+        speakBtn.onclick = () => { const t = transcriptEl.value.trim(); if (t) speak(t); };
+
+        // --- Main pipeline ---
+        async function setup(){
           const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
-          const handLandmarker = await HandLandmarker.createFromOptions(vision, {
+          handLandmarker = await HandLandmarker.createFromOptions(vision, {
             baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-assets/hand_landmarker.task' },
             numHands: 1,
             runningMode: 'VIDEO'
           });
-          const stream = await navigator.mediaDevices.getUserMedia({video:true});
+        }
+
+        async function start(){
+          if (running) return;
+          await setup();
+          stream = await navigator.mediaDevices.getUserMedia({video:true, audio:false});
           video.srcObject = stream;
-          await new Promise(r => video.onloadedmetadata = r);
+          await new Promise(r=>video.onloadedmetadata=r);
           video.play();
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
-
-          function gestureFromLandmarks(lms){
-            if(!lms || !lms.length) return 'No hand';
-            const pts = lms[0];
-            const tipIdx = [4,8,12,16,20];
-            const wristY = pts[0].y;
-            let extended = 0;
-            for (const i of tipIdx){
-              if (pts[i].y < wristY - 0.05) extended += 1;
-            }
-            if (extended >= 4) return 'Open palm 👋 (Hello)';
-            if (extended === 0) return 'Fist ✊ (Stop)';
-            if (extended === 1 && pts[4].x < pts[3].x) return 'Thumbs-up 👍 (Yes)';
-            return 'Neutral hand';
-          }
-
-          async function loop(){
-            const now = performance.now();
-            const res = await handLandmarker.detectForVideo(video, now);
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            if (res && res.handednesses && res.handednesses.length>0){
-              const lms = res.landmarks;
-              for (const points of lms){
-                ctx.fillStyle = '#10b981';
-                for (const p of points){
-                  ctx.beginPath();
-                  ctx.arc(p.x*canvas.width, p.y*canvas.height, 4, 0, Math.PI*2);
-                  ctx.fill();
-                }
-              }
-              label.textContent = gestureFromLandmarks(res.landmarks);
-            }else{
-              label.textContent = 'Show your hand to the camera';
-            }
-            requestAnimationFrame(loop);
-          }
+          running = true;
           loop();
         }
-        main().catch(e => { label.textContent = 'Error: '+e; });
+        function stop(){
+          running = false;
+          if (stream){
+            stream.getTracks().forEach(t=>t.stop());
+            stream = null;
+          }
+          label.textContent = "Stopped";
+        }
+        startBtn.onclick = start;
+        stopBtn.onclick = stop;
+
+        async function loop(){
+          if (!running) return;
+          const t0 = performance.now();
+          const res = await handLandmarker.detectForVideo(video, t0);
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          if (res && res.handednesses && res.handednesses.length>0){
+            const lms = res.landmarks;
+            for (const points of lms){
+              ctx.fillStyle = '#10b981';
+              for (const p of points){
+                ctx.beginPath();
+                ctx.arc(p.x*canvas.width, p.y*canvas.height, 4, 0, Math.PI*2);
+                ctx.fill();
+              }
+              const g = classifyGesture(points);
+              detBadge.textContent = g;
+              pushToken(g);
+            }
+            label.textContent = 'Tracking hand';
+          }else{
+            detBadge.textContent = '—';
+            label.textContent = 'Show your hand to the camera';
+            // also push neutral to trigger gaps
+            pushToken("NEUTRAL");
+          }
+
+          // FPS
+          const t1 = performance.now();
+          const dt = Math.max(1, t1 - lastFrameTs);
+          const fps = 1000.0 / dt;
+          fpsSmoothed = fpsSmoothed*0.9 + fps*0.1;
+          fpsBadge.textContent = `${fpsSmoothed.toFixed(0)} fps`;
+          lastFrameTs = t1;
+
+          requestAnimationFrame(loop);
+        }
+
+        // Auto-start if permissions were granted before
+        (async()=> {
+          try{
+            const perm = await navigator.permissions.query({name:'camera'});
+            if (perm.state === 'granted') start();
+          }catch(e){/* ignore */}
+        })();
         </script>
         </body>
         </html>
         """,
-        height=720
+        height=880
     )
-    st.caption("This browser demo avoids heavy Python dependencies and is deploy-friendly. For richer ISL/ASL models (sequence classification), integrate a hosted model endpoint or a custom Mediapipe+LSTM pipeline later.")
 
-# --------------- TAB 7: DASHBOARD ---------------
-with tab7:
-    st.subheader("📊 Accessibility Dashboard")
-    u = st.session_state["usage"]
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("🔊 Text → Speech", u["tts"])
-    c2.metric("🎤 Speech → Text", u["stt"])
-    c3.metric("📷 OCR Reads", u["ocr"])
-    c4.metric("📝 Summaries", u["summaries"])
-    st.caption(f"⏱️ Time listened (est.): **{int(u['listen_seconds']//60)} min {int(u['listen_seconds']%60)} s**")
-
-    # Charts (matplotlib-free Streamlit built-ins to keep deps minimal)
-    import pandas as pd
-    usage_df = pd.DataFrame({
-        "Feature": ["TTS","STT","OCR","Summaries"],
-        "Count": [u["tts"], u["stt"], u["ocr"], u["summaries"]]
-    })
-    st.bar_chart(usage_df.set_index("Feature"))
-
-    # Timeline (last 50 events)
-    if st.session_state["log"]:
-        tl = pd.DataFrame(st.session_state["log"][-50:])
-        tl["ts"] = tl["ts"].apply(lambda x: dt.datetime.fromtimestamp(x).strftime("%H:%M:%S"))
-        st.line_chart(tl.groupby("ts").size())
-
-    st.markdown("### 🏆 Badges")
-    if st.session_state["badges"]:
-        for b in sorted(st.session_state["badges"]):
-            st.markdown(f"<span class='badge'>{b}</span>", unsafe_allow_html=True)
-    else:
-        st.info("Use the features to unlock badges!")
+    st.caption(
+        "This sequence demo buffers per-frame gestures, stabilizes them, splits on time gaps, and maps tokens to words. "
+        "For a full ISL/ASL recognizer, plug in a learned classifier over landmark sequences (e.g., Mediapipe → LSTM/Transformer)."
+    )
 
 st.markdown("<div class='footer'>Built with ❤️ for inclusive access. • AbleAI</div>", unsafe_allow_html=True)
