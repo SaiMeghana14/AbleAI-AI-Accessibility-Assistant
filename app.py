@@ -144,8 +144,8 @@ with tab1:
     st.caption("Note: Uses Google's free web STT via the `SpeechRecognition` library. No key required, limited quota.")
 
     if st.button("🪄 Transcribe", use_container_width=True, type="primary"):
-        if audio_file is not None:
-            wav_bytes = audio_file.read()
+        if uploaded_audio is not None:
+            wav_bytes = uploaded_audio.read()
             with st.spinner("Transcribing..."):
                 text, err = run_speech_to_text(wav_bytes)
             if err:
@@ -153,7 +153,7 @@ with tab1:
             else:
                 st.text_area("Transcript", value=text, height=180)
         else:
-            st.warning("Please record audio first.")
+            st.warning("Please upload audio first.")
 
 # --------------- TAB 2: TEXT → SPEECH ---------------
 with tab2:
@@ -173,17 +173,14 @@ with tab2:
     with col2:
         if audio_bytes:
             st.audio(audio_bytes, format="audio/mp3")
-        
             st.download_button(
                 "⬇️ Download MP3",
-                data=audio_bytes,  # must be bytes
+                data=audio_bytes,
                 file_name="ableai_tts.mp3",
                 mime="audio/mp3"
             )
         else:
             st.info("⚠️ Generate some audio to enable download.")
-    
-        st.download_button("⬇️ Download MP3", data=(audio_bytes if audio_bytes else None), file_name="ableai_tts.mp3", disabled=not(bool(audio_bytes)))
 
 # --------------- TAB 3: IMAGE → ALT-TEXT ---------------
 with tab3:
