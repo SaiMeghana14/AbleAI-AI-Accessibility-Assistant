@@ -124,12 +124,22 @@ def call_hf_caption(img_bytes, token):
 
 # --------------- TAB 1: SPEECH → TEXT ---------------
 with tab1:
-    st.subheader("🎤 Speech to Text")
-    st.write("Record a short clip and transcribe it. Works best with clear speech.")
-
-    audio_file = st.audio_input("🎙️ Record your voice")
-    if audio_file is not None:
-        st.audio(audio_file, format="audio/wav")
+    st.subheader("🎤 Speech-to-Text")
+    uploaded_audio = st.file_uploader("Upload an audio file (WAV/MP3)", type=["wav", "mp3"])
+    
+    if uploaded_audio is not None:
+        st.audio(uploaded_audio, format="audio/wav")
+    
+        recognizer = sr.Recognizer()
+        try:
+            with sr.AudioFile(uploaded_audio) as source:
+                audio = recognizer.record(source)
+                text = recognizer.recognize_google(audio)
+                st.success(f"📝 Recognized Text: {text}")
+        except sr.UnknownValueError:
+            st.error("Sorry, could not understand the audio.")
+        except sr.RequestError:
+            st.error("Speech Recognition API unavailable.")
 
     st.caption("Note: Uses Google's free web STT via the `SpeechRecognition` library. No key required, limited quota.")
 
