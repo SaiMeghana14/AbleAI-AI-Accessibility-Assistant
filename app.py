@@ -169,19 +169,20 @@ with tab2:
                 st.error(err)
             else:
                 st.audio(audio_bytes, format="audio/mp3")
-    if audio_bytes:
-    st.audio(audio_bytes, format="audio/mp3")
-
-    st.download_button(
-        "⬇️ Download MP3",
-        data=audio_bytes,  # must be bytes
-        file_name="ableai_tts.mp3",
-        mime="audio/mp3"
-    )
-else:
-    st.info("⚠️ Generate some audio to enable download.")
 
     with col2:
+        if audio_bytes:
+            st.audio(audio_bytes, format="audio/mp3")
+        
+            st.download_button(
+                "⬇️ Download MP3",
+                data=audio_bytes,  # must be bytes
+                file_name="ableai_tts.mp3",
+                mime="audio/mp3"
+            )
+        else:
+            st.info("⚠️ Generate some audio to enable download.")
+    
         st.download_button("⬇️ Download MP3", data=(audio_bytes if audio_bytes else None), file_name="ableai_tts.mp3", disabled=not(bool(audio_bytes)))
 
 # --------------- TAB 3: IMAGE → ALT-TEXT ---------------
