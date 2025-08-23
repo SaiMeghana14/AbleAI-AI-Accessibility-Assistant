@@ -101,7 +101,7 @@ st.markdown(
     <div class="hero glow">
       <div class="pill">Global AI Buildathon</div>
       <div class="pill">Accessibility</div>
-      <h1 class="fade-in">Able<span class="accent">AI</span> – Multi-Modal Accessibility Assistant</h1>
+      <h1 class="accent">Able<span class="accent">AI</span> – Multi-Modal Accessibility Assistant</h1>
       <p class="small">Convert <b>voice ↔ text</b>, <b>text → speech</b>, generate <b>alt-text</b>, read text from images (OCR), summarize, and visualize your impact on accessibility.</p>
     </div>
     """,
@@ -327,15 +327,12 @@ with tab1:
     st.caption(f"⏱️ Time listened (est.): **{int(u['listen_seconds']//60)} min {int(u['listen_seconds']%60)} s**")
 
     # Charts (matplotlib-free Streamlit built-ins to keep deps minimal)
-    import plotly.express as px
-    import pandas as pd
-    
-    data = pd.DataFrame({
-        "Feature": ["Text→Speech", "Speech→Text", "OCR Reads", "Summaries"],
+   import pandas as pd
+    usage_df = pd.DataFrame({
+        "Feature": ["TTS","STT","OCR","Summaries"],
         "Count": [u["tts"], u["stt"], u["ocr"], u["summaries"]]
     })
-    fig = px.pie(data, names='Feature', values='Count', title="Feature Usage Distribution")
-    st.plotly_chart(fig, use_container_width=True)
+    st.bar_chart(usage_df.set_index("Feature"))
 
     # Timeline (last 50 events)
     if st.session_state["log"]:
