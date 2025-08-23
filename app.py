@@ -327,7 +327,7 @@ with tab1:
     st.caption(f"⏱️ Time listened (est.): **{int(u['listen_seconds']//60)} min {int(u['listen_seconds']%60)} s**")
 
     # Charts (matplotlib-free Streamlit built-ins to keep deps minimal)
-   import pandas as pd
+    import pandas as pd
     usage_df = pd.DataFrame({
         "Feature": ["TTS","STT","OCR","Summaries"],
         "Count": [u["tts"], u["stt"], u["ocr"], u["summaries"]]
